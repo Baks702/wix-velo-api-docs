@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wix Velo API v1 Documentation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; display: flex; }
+    nav { position: sticky; top: 0; width: 240px; background: #f8f9fa; height: 100vh; overflow-y: auto; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+    nav h2 { margin-top: 0; font-size: 1.1rem; }
+    nav ul { list-style: none; padding: 0; }
+    nav li { margin: 10px 0; }
+    nav a { text-decoration: none; color: #007bff; }
+    nav a:hover { text-decoration: underline; }
+    main { flex: 1; padding: 40px; max-width: 800px; }
+    pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 4px; overflow-x: auto; }
+    code { font-family: Consolas, monospace; }
+    h1 { margin-top: 0; }
+    h2 { margin-bottom: .5em; border-bottom: 2px solid #e1e1e1; padding-bottom: .2em; }
+    .endpoint { margin-bottom: 3em; }
+    .section-title { font-size: 1rem; font-weight: bold; margin: 1.5em 0 .5em; }
+    table { width: 100%; border-collapse: collapse; margin: .5em 0 1em; }
+    th, td { text-align: left; padding: .5em; border: 1px solid #ddd; }
+    .curl { margin: .5em 0; }
+    .response { margin-top: .5em; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <h2>Wix Velo API v1</h2>
+    <ul>
+      <li><a href="#intro">Introduction</a></li>
+      <li><a href="#auth">Authentication</a></li>
+      <li><a href="#get-prices">GET /crypto/prices</a></li>
+      <li><a href="#add-lead">POST /crm/leads</a></li>
+      <li><a href="#github-user">GET /oauth/github</a></li>
+      <li><a href="#sync-weather">POST /jobs/sync-weather</a></li>
+      <li><a href="#stripe-webhook">POST /webhooks/stripe</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>Wix Velo API v1 Documentation</h1>
+
+    <div class="endpoint" id="intro">
+      <h2>Introduction</h2>
+      <p>
+        Welcome to the Wix Velo API v1. Here you’ll find code snippets and examples for integrating
+        external services (REST APIs, OAuth, Webhooks, Scheduled Jobs) directly from your Wix site.
+      </p>
+    </div>
+
+    <div class="endpoint" id="auth">
+      <h2>Authentication</h2>
+      <p>
+        All backend calls must be defined in `.jsw` modules to keep secrets safe. Use
+        <code>wix-secrets-backend</code> to retrieve any API keys or tokens.
+      </p>
+      <pre><code>import { getSecret } from 'wix-secrets-backend';
+
+export async function getMyKey() {
+  return await getSecret('myApiKey');
+}</code></pre>
+    </div>
+
+    <div class="endpoint" id="get-prices">
+      <h2>Find Crypto Prices</h2>
+      <p class="section-title">Endpoint</p>
+      <table>
+        <tr><th>Method</th><td>GET</td></tr>
+        <tr><th>Path</th><td><code>/backend/myApi.jsw#getCryptoPrices</code></td></tr>
+      </table>
+      <p class="section-title">Description</p>
+      <p>Fetches current USD prices for Bitcoin and Ethereum from CoinGecko.</p>
+      <p class="section-title">Code</p>
+      <pre><code>import { fetch } from 'wix-fetch';
+
+export async function getCryptoPrices() {
+  const res = await fetch(
+    'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd'
+  );
+  if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+  return res.json();
+}</code></pre>
+      <p class="section-title">Sample Response</p>
+      <pre><code>{
+  "bitcoin": { "usd": 63420 },
+  "ethereum": { "usd": 4200 }
+}</code></pre>
+    </div>
+
+    <div class="endpoint" id="add-lead">
+      <h2>Create a CRM Lead</h2>
+      <p class="section-title">Endpoint</p>
+      <table>
+        <tr><th>Method</th><td>POST</td></tr>
+        <tr><th>Path</th><td><code>/backend/crm.jsw#addLead</code></td></tr>
+      </table>
+      <p class="section-title">Description</p>
+      <p>Submits a new lead (name, email) to your CRM via JSON payload.</p>
+      <p class="section-title">Code</p>
+      <pre><code>import { fetch } from 'wix-fetch';
+import { getSecret } from 'wix-secrets-backend';
+
+export async function addLead(name, email) {
+  const apiKey = await getSecret('crmApiKey');
+  const res = await fetch('https://example-crm.com/api/leads', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({ name, email })
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`CRM error: ${err}`);
+  }
+  return res.json();
+}</code></pre>
+      <p class="section-title">cURL Example</p>
+      <pre class="curl"><code>curl -X POST \
+  https://yourdomain.com/_functions/addLead \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Jane Doe","email":"jane@example.com"}'
+</code></pre>
+      <p class="section-title">Sample Response</p>
+      <pre class="response"><code>{
+  "id": "12345",
+  "status": "success"
+}</code></pre>
+    </div>
+
+    <div class="endpoint" id="github-user">
+      <h2>Get GitHub User</h2>
+      <p class="section-title">Endpoint</p>
+      <table>
+        <tr><th>Method</th><td>GET</td></tr>
+        <tr><th>Path</th><td><code>/backend/oauthService.jsw#getGithubUser</code></td></tr>
+      </table>
+      <p class="section-title">Description</p>
+      <p>Fetches authenticated GitHub user data using an OAuth token.</p>
+      <p class="section-title">Code</p>
+      <pre><code>import { fetch } from 'wix-fetch';
+
+export async function getGithubUser(accessToken) {
+  const res = await fetch('https://api.github.com/user', {
+    headers: {
+      'Authorization': `token ${accessToken}`,
+      'Accept': 'application/json'
+    }
+  });
+  if (!res.ok) throw new Error('GitHub API error');
+  return res.json();
+}</code></pre>
+      <p class="section-title">Sample Response</p>
+      <pre class="response"><code>{
+  "login": "octocat",
+  "id": 1,
+  "name": "The Octocat"
+}</code></pre>
+    </div>
+
+    <div class="endpoint" id="sync-weather">
+      <h2>Sync Weather Data</h2>
+      <p class="section-title">Endpoint</p>
+      <table>
+        <tr><th>Method</th><td>POST</td></tr>
+        <tr><th>Path</th><td><code>/backend/scheduledJobs.jsw#syncWeather</code></td></tr>
+      </table>
+      <p class="section-title">Description</p>
+      <p>Pulls current weather for London every hour and writes to a Wix Collection.</p>
+      <p class="section-title">Code</p>
+      <pre><code>import { fetch } from 'wix-fetch';
+import wixData from 'wix-data';
+
+export async function syncWeather() {
+  const res = await fetch(
+    'https://api.openweathermap.org/data/2.5/weather?q=London&appid=YOUR_KEY'
+  );
+  const weather = await res.json();
+  await wixData.insert('WeatherCollection', {
+    _id: 'londonWeather',
+    temperature: weather.main.temp,
+    humidity: weather.main.humidity,
+    lastUpdate: new Date()
+  });
+}</code></pre>
+    </div>
+
+    <div class="endpoint" id="stripe-webhook">
+      <h2>Stripe Webhook Handler</h2>
+      <p class="section-title">Endpoint</p>
+      <table>
+        <tr><th>Method</th><td>POST</td></tr>
+        <tr><th>Path</th><td><code>/backend/webhooks.jsw#post_stripeWebhook</code></td></tr>
+      </table>
+      <p class="section-title">Description</p>
+      <p>Receives Stripe events and inserts paid orders into a Collection.</p>
+      <p class="section-title">Code</p>
+      <pre><code>import { ok } from 'wix-http-functions';
+import wixData from 'wix-data';
+
+export async function post_stripeWebhook(request) {
+  const payload = await request.body.json();
+  if (payload.type === 'payment_intent.succeeded') {
+    const p = payload.data.object;
+    await wixData.insert('Orders', {
+      orderId: p.id,
+      amount: p.amount_received,
+      status: 'Paid',
+      createdAt: new Date()
+    });
+  }
+  return ok({ received: true });
+}</code></pre>
+    </div>
+
+  </main>
+</body>
+</html>
